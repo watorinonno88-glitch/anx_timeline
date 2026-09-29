@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>こころの記録</title>
+    
+    <!-- Google Fonts: M PLUS Rounded 1c for friendly UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"M PLUS Rounded 1c"', 'sans-serif'],
+                    },
+                    colors: {
+                        app: {
+                            bg: '#181c17',       /* Deep earthy dark olive bg */
+                            card: '#252a23',     /* Dark sage charcoal card */
+                            cardHover: '#2e352c',
+                            border: '#2e352b',
+                            accent: '#609376',   /* Sage green border highlight */
+                            accentLight: '#7bb091',
+                            textMuted: '#9fae9f', /* Soft grayish green subtitle */
+                        },
+                        level: {
+                            1: '#f6e8b1', /* 薄黄 */
+                            2: '#efbe74', /* 黄橙 */
+                            3: '#e79357', /* オレンジ */
+                            4: '#dd6849', /* 朱色 */
+                            5: '#d53a37'  /* 濃い赤 */
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #181c17;
+            color: #f0f4ef;
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        /* Smooth Carousel Transitions */
+        .slide-in-right { animation: slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .slide-in-left { animation: slideInLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0.3; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); opacity: 0.3; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* 24-hour vertical timeline grid */
+        .timeline-container {
+            height: 1440px; /* 24 hrs * 60px/hr */
+            position: relative;
+            background-image: linear-gradient(to bottom, #252a23 1px, transparent 1px);
+            background-size: 100% 60px;
+        }
+
+        .time-label {
+            height: 60px;
+            box-sizing: border-box;
+        }
+
+        /* Custom Dark Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #181c17; }
+        ::-webkit-scrollbar-thumb { background: #323b30; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #455242; }
+
+        .modal-backdrop {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .hidden-view { display: none !important; }
+
+        /* Level Color Helpers */
+        .bg-lvl-1 { background-color: #f6e8b1; }
+        .bg-lvl-2 { background-color: #efbe74; }
+        .bg-lvl-3 { background-color: #e79357; }
+        .bg-lvl-4 { background-color: #dd6849; }
+        .bg-lvl-5 { background-color: #d53a37; }
+
+        .text-lvl-1 { color: #f6e8b1; }
+        .text-lvl-2 { color: #efbe74; }
+        .text-lvl-3 { color: #e79357; }
+        .text-lvl-4 { color: #dd6849; }
+        .text-lvl-5 { color: #d53a37; }
+
+        .border-lvl-1 { border-color: #f6e8b1; }
+        .border-lvl-2 { border-color: #efbe74; }
+        .border-lvl-3 { border-color: #e79357; }
+        .border-lvl-4 { border-color: #dd6849; }
+        .border-lvl-5 { border-color: #d53a37; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-0 sm:p-4 selection:bg-app-accent selection:text-white">
+
+    <!-- App Container -->
+    <div id="app" class="w-full max-w-md h-[100dvh] sm:h-[90vh] bg-app-bg sm:rounded-[2.5rem] sm:shadow-2xl sm:shadow-black/80 overflow-hidden relative flex flex-col border border-app-border/60">
+        
+        <!-- Header View (Matches Provided Image Header Exactly) -->
+        <header class="bg-app-bg px-6 pt-6 pb-2 flex-shrink-0">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100 mb-1">こころの記録</h1>
+            <p class="text-sm font-normal text-app-textMuted">不安を感じた日時と気持ちを、やさしく記録します。</p>
+        </header>
+
+        <!-- Main Content Canvas Area -->
+        <main class="flex-1 relative overflow-hidden flex flex-col">
+            
+            <!-- VIEW 1: CALENDAR VIEW -->
+            <div id="view-calendar" class="absolute inset-0 w-full h-full overflow-y-auto px-5 pb-6 flex flex-col justify-between">
+                <div>
+                    <!-- Calendar Header Navigation (< 2026年 9月 >) -->
+                    <div class="flex justify-between items-center my-4 px-2">
+                        <button id="cal-prev" class="p-2 text-app-textMuted hover:text-slate-100 transition-colors rounded-full hover:bg-app-card">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <h2 id="cal-month-year" class="text-lg font-bold text-slate-100 tracking-wide">2026年 9月</h2>
+                        <button id="cal-next" class="p-2 text-app-textMuted hover:text-slate-100 transition-colors rounded-full hover:bg-app-card">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- Weekdays Header Row -->
+                    <div class="grid grid-cols-7 gap-2 text-center mb-2 px-1">
+                        <div class="text-xs font-medium text-app-textMuted">日</div>
+                        <div class="text-xs font-medium text-app-textMuted">月</div>
+                        <div class="text-xs font-medium text-app-textMuted">火</div>
+                        <div class="text-xs font-medium text-app-textMuted">水</div>
+                        <div class="text-xs font-medium text-app-textMuted">木</div>
+                        <div class="text-xs font-medium text-app-textMuted">金</div>
+                        <div class="text-xs font-medium text-app-textMuted">土</div>
+                    </div>
+
+                    <!-- Days Grid -->
+                    <div id="calendar-days" class="grid grid-cols-7 gap-2 text-center">
+                        <!-- Dynamic Calendar Cells Generated via JS -->
+                    </div>
+                </div>
+
+                <!-- Heatmap Color Legend (Replicated Exactly from Provided Screenshot) -->
+                <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-300 font-medium px-2">
+                    <span class="text-app-textMuted">少ない</span>
+                    <div class="flex items-center gap-1.5 mx-2">
+                        <div class="w-2.5 h-2.5 rounded-sm bg-level-1"></div>
+                        <div class="w-2.5 h-2.5 rounded-sm bg-level-2"></div>
+                        <div class="w-2.5 h-2.5 rounded-sm bg-level-3"></div>
+                        <div class="w-2.5 h-2.5 rounded-sm bg-level-4"></div>
+                        <div class="w-2.5 h-2.5 rounded-sm bg-level-5"></div>
+                    </div>
+                    <span class="text-app-textMuted">強い</span>
+                </div>
+            </div>
+
+            <!-- VIEW 2: 1-DAY VERTICAL TIMELINE VIEW -->
+            <div id="view-timeline" class="absolute inset-0 w-full h-full flex flex-col hidden-view bg-app-bg">
+                
+                <!-- Timeline Navigation Bar -->
+                <div class="bg-app-bg px-4 py-2 border-b border-app-border flex justify-between items-center z-10">
+                    <button id="tl-back" class="p-2 text-app-textMuted hover:text-slate-100 flex items-center gap-1 text-xs font-medium rounded-lg hover:bg-app-card transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        <span>カレンダー</span>
+                    </button>
+                    <div class="flex items-center gap-1">
+                        <button id="tl-prev" class="p-1.5 text-app-accent hover:text-app-accentLight rounded-full hover:bg-app-card transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <span id="tl-date-display" class="font-bold text-slate-100 w-32 text-center text-sm">9月29日(火)</span>
+                        <button id="tl-next" class="p-1.5 text-app-accent hover:text-app-accentLight rounded-full hover:bg-app-card transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+                    <button id="btn-today-nav" class="text-xs text-app-accent font-semibold px-2.5 py-1 bg-app-accent/10 border border-app-accent/30 rounded-full">今日</button>
+                </div>
+
+                <!-- Swipe Hint Banner -->
+                <div class="bg-app-card/60 text-[11px] text-app-textMuted py-1.5 px-4 text-center border-b border-app-border/40 flex items-center justify-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-app-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                    <span>左右スワイプで前後の日と比較できます</span>
+                </div>
+
+                <!-- Timeline Scroll Area -->
+                <div id="timeline-scroll-area" class="flex-1 overflow-y-auto relative select-none">
+                    <div id="timeline-wrapper" class="w-full">
+                        <div class="flex">
+                            <!-- Hours Column (0:00 - 24:00) -->
+                            <div class="w-14 flex-shrink-0 bg-app-bg/90 border-r border-app-border z-10">
+                                <!-- Dynamic time labels via JS -->
+                            </div>
+                            <!-- Blocks Canvas Area -->
+                            <div class="flex-1 timeline-container bg-app-bg" id="timeline-content">
+                                <!-- Dynamic blocks inserted via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floating Add Record Button -->
+                <button id="btn-add" class="absolute bottom-6 right-6 px-4 py-3 bg-app-accent hover:bg-app-accentLight text-slate-950 font-bold rounded-2xl shadow-xl shadow-black/50 flex items-center gap-2 transition-all transform active:scale-95 z-20">
+                    <svg class="w-5 h-5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                    <span class="text-sm">記録を追加</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- MODALS -->
+
+        <!-- 1. Add / Edit Record Modal -->
+        <div id="modal-add" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop bg-black/75 hidden-view opacity-0 transition-opacity duration-250">
+            <div class="bg-app-card border border-app-border w-full max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl p-5 max-h-[88vh] overflow-y-auto transform translate-y-full sm:translate-y-0 transition-transform duration-250" id="modal-add-content">
+                <div class="flex justify-between items-center mb-4 pb-2 border-b border-app-border">
+                    <h3 id="modal-add-title" class="text-base font-bold text-slate-100">不安を感じた記録</h3>
+                    <button id="btn-close-add" class="text-app-textMuted hover:text-slate-100 p-1.5 rounded-full hover:bg-app-bg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <form id="form-record" class="space-y-4">
+                    <input type="hidden" id="input-record-id">
+                    <input type="hidden" id="input-date">
+                    
+                    <!-- Time Inputs -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-app-textMuted mb-1">開始時刻</label>
+                            <input type="time" id="input-start" required class="w-full bg-app-bg border border-app-border rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-app-accent">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-app-textMuted mb-1">終了時刻</label>
+                            <input type="time" id="input-end" required class="w-full bg-app-bg border border-app-border rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-app-accent">
+                        </div>
+                    </div>
+
+                    <!-- Anxiety Intensity Selector -->
+                    <div>
+                        <label class="block text-xs font-medium text-app-textMuted mb-2">不安の強さ (1:軽度 〜 5:極めて強い)</label>
+                        <div class="grid grid-cols-5 gap-1.5" id="intensity-selector">
+                            <!-- Dynamic Level Buttons via JS -->
+                        </div>
+                        <input type="hidden" id="input-level" value="3">
+                    </div>
+
+                    <!-- Symptoms Tag Chips -->
+                    <div>
+                        <label class="block text-xs font-medium text-app-textMuted mb-2">感じた気持ち・体の状態 (複数選択可)</label>
+                        <div class="flex flex-wrap gap-1.5" id="symptoms-chip-container">
+                            <!-- Dynamic Tag Chips via JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div>
+                        <label class="block text-xs font-medium text-app-textMuted mb-1">その時のメモ・出来事</label>
+                        <textarea id="input-notes" rows="3" class="w-full bg-app-bg border border-app-border rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-app-accent resize-none placeholder-app-textMuted/50" placeholder="例: カフェで急に胸が苦しくなった。深呼吸で少し和らいだ。"></textarea>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="w-full bg-app-accent hover:bg-app-accentLight text-slate-950 font-bold py-3 rounded-xl shadow-lg transition-colors text-sm">
+                            保存する
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. Detail View Modal -->
+        <div id="modal-view" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/75 hidden-view opacity-0 transition-opacity duration-250 p-4">
+            <div class="bg-app-card border border-app-border w-full max-w-sm rounded-3xl shadow-2xl p-5 transform scale-95 transition-transform duration-250" id="modal-view-content">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <p class="text-xs font-medium text-app-accent mb-0.5" id="detail-date">2026/09/29</p>
+                        <h3 class="text-xl font-bold text-slate-100" id="detail-time">14:00 - 15:30</h3>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <span class="text-xs text-app-textMuted" id="detail-duration">持続: 1時間30分</span>
+                            <span id="detail-level-badge" class="text-[11px] px-2.5 py-0.5 rounded-full font-bold">レベル3</span>
+                        </div>
+                    </div>
+                    <button id="btn-close-view" class="text-app-textMuted hover:text-slate-100 p-1.5 bg-app-bg rounded-full">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Symptoms Chips -->
+                <div class="mb-3 flex flex-wrap gap-1" id="detail-tags"></div>
+                
+                <!-- Notes -->
+                <div class="bg-app-bg rounded-2xl p-3.5 min-h-[75px] mb-4 border border-app-border/70">
+                    <p class="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed" id="detail-notes">メモなし</p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-between items-center pt-2 border-t border-app-border">
+                    <button id="btn-edit" class="text-app-textMuted hover:text-slate-100 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1 hover:bg-app-bg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        編集
+                    </button>
+                    <button id="btn-delete" class="text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1 hover:bg-rose-950/30">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        削除
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const STORAGE_KEY = 'kokoro_records_v1';
+
+        const SYMPTOM_OPTIONS = [
+            '不安', '緊張', '動悸', '息苦しさ', '焦り', 
+            '吐き気', 'めまい', '冷や汗', '体の震え', 'モヤモヤ', 'パニック'
+        ];
+
+        const LEVEL_CONFIG = {
+            1: { label: 'ごく軽度', hex: '#f6e8b1', textColor: '#181c17' },
+            2: { label: '軽度',     hex: '#efbe74', textColor: '#181c17' },
+            3: { label: '中等度',   hex: '#e79357', textColor: '#ffffff' },
+            4: { label: 'やや強い', hex: '#dd6849', textColor: '#ffffff' },
+            5: { label: '極めて強い', hex: '#d53a37', textColor: '#ffffff' }
+        };
+
+        const AppState = {
+            records: [],
+            currentCalDate: new Date(2026, 8, 1), // 2026年9月 (Screenshot matched)
+            currentTimelineDate: new Date(2026, 8, 29), // 2026年9月29日
+            selectedCalDateStr: '2026-09-29',
+            view: 'calendar',
+            currentRecordId: null,
+            selectedSymptoms: new Set()
+        };
+
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    AppState.records = JSON.parse(raw);
+                } else {
+                    populateSampleData();
+                }
+            } catch (e) {
+                console.error("Data load error", e);
+                AppState.records = [];
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(AppState.records));
+        }
+
+        function populateSampleData() {
+            // Realistic sample records matching screenshot dates (e.g. Sept 29, Sept 26)
+            AppState.records = [
+                {
+                    id: 'sample-29-1',
+                    date: '2026-09-29',
+                    start: '14:00',
+                    end: '15:30',
+                    level: 3, // Orange dot (#e79357) matching provided image 29th
+                    symptoms: ['不安', '緊張', 'モヤモヤ'],
+                    notes: '打合せの前に少し気持ちが高ぶった。ハーブティーを飲んで落ち着いた。'
+                },
+                {
+                    id: 'sample-26-1',
+                    date: '2026-09-26',
+                    start: '10:00',
+                    end: '11:15',
+                    level: 4, // Level 4
+                    symptoms: ['動悸', '焦り'],
+                    notes: '移動中の電車内でソワソワ感。'
+                },
+                {
+                    id: 'sample-15-1',
+                    date: '2026-09-15',
+                    start: '21:00',
+                    end: '22:00',
+                    level: 2,
+                    symptoms: ['緊張', '冷や汗'],
+                    notes: '就寝前のモヤモヤ感。'
+                }
+            ];
+            saveData();
+        }
+
+        function formatDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        
+        function getWeekdayJP(dateObj) {
+            return ['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()];
+        }
+
+        // --- DOM Elements ---
+        const viewCalendar = document.getElementById('view-calendar');
+        const viewTimeline = document.getElementById('view-timeline');
+        const calMonthYear = document.getElementById('cal-month-year');
+        const calendarDays = document.getElementById('calendar-days');
+        const tlDateDisplay = document.getElementById('tl-date-display');
+        const timelineContent = document.getElementById('timeline-content');
+        const timelineWrapper = document.getElementById('timeline-wrapper');
+        const timeLabelsContainer = document.querySelector('#timeline-wrapper .w-14');
+        
+        const modalAdd = document.getElementById('modal-add');
+        const modalAddContent = document.getElementById('modal-add-content');
+        const modalView = document.getElementById('modal-view');
+        const modalViewContent = document.getElementById('modal-view-content');
+
+        function renderCalendar() {
+            const year = AppState.currentCalDate.getFullYear();
+            const month = AppState.currentCalDate.getMonth();
+            
+            calMonthYear.textContent = `${year}年 ${month + 1}月`;
+            calendarDays.innerHTML = '';
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startingDayOfWeek = firstDay.getDay();
+            const totalDays = lastDay.getDate();
+
+            // Empty padding cells for calendar start
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const emptyDiv = document.createElement('div');
+                calendarDays.appendChild(emptyDiv);
+            }
+
+            // Map max intensity level per date
+            const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+            const dayMaxLevels = {};
+            AppState.records.forEach(r => {
+                if (r.date.startsWith(monthPrefix)) {
+                    const maxLvl = dayMaxLevels[r.date] || 0;
+                    dayMaxLevels[r.date] = Math.max(maxLvl, r.level || 1);
+                }
+            });
+
+            for (let day = 1; day <= totalDays; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const maxLevel = dayMaxLevels[dateStr];
+
+                const card = document.createElement('button');
+                
+                // Highlight border for selected day or highlighted days (e.g., 26th and 29th as in image)
+                const isSelectedDay = (dateStr === AppState.selectedCalDateStr);
+                
+                card.className = `relative aspect-square rounded-2xl flex flex-col items-center justify-center p-1 transition-all duration-150 bg-app-card border ${
+                    isSelectedDay 
+                    ? 'border-[2.5px] border-app-accent ring-1 ring-app-accent/30' 
+                    : 'border-app-border/80 hover:border-app-textMuted/40 hover:bg-app-cardHover'
+                }`;
+
+                // Day Number Text
+                const dayText = document.createElement('span');
+                dayText.textContent = day;
+                dayText.className = 'text-sm font-normal text-slate-200';
+                card.appendChild(dayText);
+
+                // Dot Indicator for Anxiety Level (Dot Replica from Provided Screenshot)
+                const dotContainer = document.createElement('div');
+                dotContainer.className = 'h-2 flex items-center justify-center mt-0.5';
+
+                if (maxLevel) {
+                    const dot = document.createElement('div');
+                    dot.className = 'w-2 h-2 rounded-full shadow-sm';
+                    dot.style.backgroundColor = LEVEL_CONFIG[maxLevel].hex;
+                    dotContainer.appendChild(dot);
+                }
+                card.appendChild(dotContainer);
+
+                card.onclick = () => {
+                    AppState.selectedCalDateStr = dateStr;
+                    AppState.currentTimelineDate = new Date(year, month, day);
+                    switchView('timeline');
+                };
+
+                calendarDays.appendChild(card);
+            }
+        }
+
+        document.getElementById('cal-prev').onclick = () => {
+            AppState.currentCalDate.setMonth(AppState.currentCalDate.getMonth() - 1);
+            renderCalendar();
+        };
+        document.getElementById('cal-next').onclick = () => {
+            AppState.currentCalDate.setMonth(AppState.currentCalDate.getMonth() + 1);
+            renderCalendar();
+        };
+
+        function buildTimeLabels() {
+            let html = '';
+            for (let i = 0; i <= 24; i++) {
+                html += `<div class="time-label flex justify-end items-start pr-2 pt-1">
+                            <span class="text-[10px] font-medium text-app-textMuted">${i}:00</span>
+                         </div>`;
+            }
+            timeLabelsContainer.innerHTML = html;
+        }
+
+        function renderTimelineBlocks() {
+            const dateStr = formatDate(AppState.currentTimelineDate);
+            const m = AppState.currentTimelineDate.getMonth() + 1;
+            const d = AppState.currentTimelineDate.getDate();
+            const w = getWeekdayJP(AppState.currentTimelineDate);
+            
+            tlDateDisplay.textContent = `${m}月${d}日(${w})`;
+
+            const dayRecords = AppState.records.filter(r => r.date === dateStr);
+            timelineContent.innerHTML = '';
+
+            dayRecords.forEach(record => {
+                const [startH, startM] = record.start.split(':').map(Number);
+                const [endH, endM] = record.end.split(':').map(Number);
+                
+                let startTotalMins = startH * 60 + startM;
+                let endTotalMins = endH * 60 + endM;
+                if (endTotalMins < startTotalMins) endTotalMins += 24 * 60;
+
+                const durationMins = endTotalMins - startTotalMins;
+                const topPx = startTotalMins;
+                const heightPx = Math.min(durationMins, 1440 - topPx);
+
+                const lvl = record.level || 3;
+                const lvlInfo = LEVEL_CONFIG[lvl];
+
+                const block = document.createElement('div');
+                block.className = 'absolute left-[4%] w-[92%] rounded-2xl p-2.5 cursor-pointer shadow-lg border-l-4 transition-transform active:scale-[0.99] hover:scale-[1.01]';
+                
+                block.style.top = `${topPx}px`;
+                block.style.height = `${Math.max(heightPx, 36)}px`;
+                block.style.backgroundColor = `${lvlInfo.hex}22`; // Opacity fill
+                block.style.borderLeftColor = lvlInfo.hex;
+
+                // Inner content
+                const headerRow = document.createElement('div');
+                headerRow.className = 'flex justify-between items-center gap-1';
+
+                const timeBadge = document.createElement('span');
+                timeBadge.className = 'text-xs font-bold text-slate-100';
+                timeBadge.textContent = `${record.start} - ${record.end}`;
+
+                const lvlBadge = document.createElement('span');
+                lvlBadge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold';
+                lvlBadge.style.backgroundColor = lvlInfo.hex;
+                lvlBadge.style.color = lvlInfo.textColor;
+                lvlBadge.textContent = `${lvlInfo.label}`;
+
+                headerRow.appendChild(timeBadge);
+                headerRow.appendChild(lvlBadge);
+                block.appendChild(headerRow);
+
+                if (heightPx >= 50 && record.symptoms && record.symptoms.length > 0) {
+                    const tagsRow = document.createElement('div');
+                    tagsRow.className = 'flex flex-wrap gap-1 mt-1.5 overflow-hidden';
+                    record.symptoms.forEach(s => {
+                        const tag = document.createElement('span');
+                        tag.className = 'text-[10px] bg-app-bg/80 text-slate-200 px-2 py-0.5 rounded-lg border border-app-border';
+                        tag.textContent = s;
+                        tagsRow.appendChild(tag);
+                    });
+                    block.appendChild(tagsRow);
+                }
+
+                if (heightPx >= 80 && record.notes) {
+                    const notesPreview = document.createElement('p');
+                    notesPreview.className = 'text-xs text-slate-300 truncate mt-1.5 opacity-90';
+                    notesPreview.textContent = record.notes;
+                    block.appendChild(notesPreview);
+                }
+
+                block.onclick = () => openViewModal(record);
+                timelineContent.appendChild(block);
+            });
+            
+            // Auto scroll to first block or 8am
+            const scrollArea = document.getElementById('timeline-scroll-area');
+            if (dayRecords.length > 0) {
+                const [startH, startM] = dayRecords[0].start.split(':').map(Number);
+                scrollArea.scrollTop = Math.max(0, (startH * 60 + startM) - 60);
+            } else {
+                scrollArea.scrollTop = 8 * 60;
+            }
+        }
+
+        function changeTimelineDay(offset) {
+            timelineWrapper.classList.remove('slide-in-left', 'slide-in-right');
+            void timelineWrapper.offsetWidth; // Force reflow
+            
+            if (offset > 0) {
+                timelineWrapper.classList.add('slide-in-right');
+            } else {
+                timelineWrapper.classList.add('slide-in-left');
+            }
+
+            AppState.currentTimelineDate.setDate(AppState.currentTimelineDate.getDate() + offset);
+            AppState.selectedCalDateStr = formatDate(AppState.currentTimelineDate);
+            renderTimelineBlocks();
+        }
+
+        document.getElementById('tl-prev').onclick = () => changeTimelineDay(-1);
+        document.getElementById('tl-next').onclick = () => changeTimelineDay(1);
+        document.getElementById('tl-back').onclick = () => switchView('calendar');
+        document.getElementById('btn-today-nav').onclick = () => {
+            AppState.currentCalDate = new Date();
+            AppState.currentTimelineDate = new Date();
+            AppState.selectedCalDateStr = formatDate(AppState.currentTimelineDate);
+            renderCalendar();
+            renderTimelineBlocks();
+        };
+
+        // Swipe Gesture Handling
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const scrollArea = document.getElementById('timeline-scroll-area');
+
+        scrollArea.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: true});
+
+        scrollArea.addEventListener('touchend', e => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                if (diffX < 0) changeTimelineDay(1);  // Swipe Left -> Next Day
+                else changeTimelineDay(-1);           // Swipe Right -> Prev Day
+            }
+        }, {passive: true});
+
+        function switchView(viewName) {
+            AppState.view = viewName;
+            if (viewName === 'calendar') {
+                viewTimeline.classList.add('hidden-view');
+                viewCalendar.classList.remove('hidden-view');
+                renderCalendar();
+            } else {
+                viewCalendar.classList.add('hidden-view');
+                viewTimeline.classList.remove('hidden-view');
+                renderTimelineBlocks();
+            }
+        }
+
+        // Intensity Selector Builder
+        function buildIntensitySelector(selectedLevel = 3) {
+            const container = document.getElementById('intensity-selector');
+            container.innerHTML = '';
+
+            [1, 2, 3, 4, 5].forEach(lvl => {
+                const info = LEVEL_CONFIG[lvl];
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const isSelected = (lvl === Number(selectedLevel));
+
+                btn.className = `flex flex-col items-center justify-center p-2 rounded-xl border transition-all ${
+                    isSelected ? 'bg-app-bg border-app-accent ring-2 ring-app-accent/40' : 'bg-app-bg border-app-border hover:border-app-textMuted/40'
+                }`;
+
+                btn.innerHTML = `
+                    <div class="w-3.5 h-3.5 rounded-full mb-1" style="background-color: ${info.hex}"></div>
+                    <span class="text-xs font-bold text-slate-100">${lvl}</span>
+                    <span class="text-[9px] text-app-textMuted scale-90">${info.label}</span>
+                `;
+
+                btn.onclick = () => {
+                    document.getElementById('input-level').value = lvl;
+                    buildIntensitySelector(lvl);
+                };
+
+                container.appendChild(btn);
+            });
+        }
+
+        // Symptoms Chips Builder
+        function buildSymptomChips() {
+            const container = document.getElementById('symptoms-chip-container');
+            container.innerHTML = '';
+
+            SYMPTOM_OPTIONS.forEach(symptom => {
+                const isSelected = AppState.selectedSymptoms.has(symptom);
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = `text-xs px-3 py-1.5 rounded-full border transition-all ${
+                    isSelected 
+                    ? 'bg-app-accent/20 text-app-accentLight border-app-accent font-bold' 
+                    : 'bg-app-bg text-app-textMuted border-app-border hover:border-app-textMuted/40'
+                }`;
+                chip.textContent = symptom;
+
+                chip.onclick = () => {
+                    if (AppState.selectedSymptoms.has(symptom)) {
+                        AppState.selectedSymptoms.delete(symptom);
+                    } else {
+                        AppState.selectedSymptoms.add(symptom);
+                    }
+                    buildSymptomChips();
+                };
+
+                container.appendChild(chip);
+            });
+        }
+
+        function openAddModal(existingRecord = null) {
+            AppState.selectedSymptoms.clear();
+
+            if (existingRecord) {
+                document.getElementById('modal-add-title').textContent = '記録の編集';
+                document.getElementById('input-record-id').value = existingRecord.id;
+                document.getElementById('input-date').value = existingRecord.date;
+                document.getElementById('input-start').value = existingRecord.start;
+                document.getElementById('input-end').value = existingRecord.end;
+                document.getElementById('input-level').value = existingRecord.level || 3;
+                document.getElementById('input-notes').value = existingRecord.notes || '';
+                
+                (existingRecord.symptoms || []).forEach(s => AppState.selectedSymptoms.add(s));
+            } else {
+                document.getElementById('modal-add-title').textContent = '不安を感じた記録';
+                document.getElementById('input-record-id').value = '';
+                document.getElementById('input-date').value = formatDate(AppState.currentTimelineDate);
+                
+                const now = new Date();
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(Math.floor(now.getMinutes() / 10) * 10).padStart(2, '0');
+                document.getElementById('input-start').value = `${h}:${m}`;
+                
+                now.setHours(now.getHours() + 1);
+                document.getElementById('input-end').value = `${String(now.getHours()).padStart(2, '0')}:${m}`;
+                document.getElementById('input-level').value = 3;
+                document.getElementById('input-notes').value = '';
+            }
+
+            buildIntensitySelector(Number(document.getElementById('input-level').value));
+            buildSymptomChips();
+
+            modalAdd.classList.remove('hidden-view');
+            requestAnimationFrame(() => {
+                modalAdd.classList.remove('opacity-0');
+                modalAddContent.classList.remove('translate-y-full');
+            });
+        }
+
+        function closeAddModal() {
+            modalAdd.classList.add('opacity-0');
+            modalAddContent.classList.add('translate-y-full');
+            setTimeout(() => modalAdd.classList.add('hidden-view'), 250);
+        }
+
+        document.getElementById('btn-add').onclick = () => openAddModal();
+        document.getElementById('btn-close-add').onclick = closeAddModal;
+
+        document.getElementById('form-record').onsubmit = (e) => {
+            e.preventDefault();
+            const recordId = document.getElementById('input-record-id').value;
+            const recordData = {
+                id: recordId || Date.now().toString(),
+                date: document.getElementById('input-date').value,
+                start: document.getElementById('input-start').value,
+                end: document.getElementById('input-end').value,
+                level: Number(document.getElementById('input-level').value),
+                symptoms: Array.from(AppState.selectedSymptoms),
+                notes: document.getElementById('input-notes').value.trim()
+            };
+
+            if (recordId) {
+                const idx = AppState.records.findIndex(r => r.id === recordId);
+                if (idx !== -1) AppState.records[idx] = recordData;
+            } else {
+                AppState.records.push(recordData);
+            }
+
+            saveData();
+            renderTimelineBlocks();
+            renderCalendar();
+            closeAddModal();
+        };
+
+        function openViewModal(record) {
+            AppState.currentRecordId = record.id;
+            
+            document.getElementById('detail-date').textContent = record.date.replace(/-/g, '/');
+            document.getElementById('detail-time').textContent = `${record.start} - ${record.end}`;
+            document.getElementById('detail-notes').textContent = record.notes || 'メモなし';
+            
+            const [sH, sM] = record.start.split(':').map(Number);
+            const [eH, eM] = record.end.split(':').map(Number);
+            let sTotal = sH * 60 + sM;
+            let eTotal = eH * 60 + eM;
+            if (eTotal < sTotal) eTotal += 24 * 60;
+            const diff = eTotal - sTotal;
+            const h = Math.floor(diff / 60);
+            const m = diff % 60;
+            document.getElementById('detail-duration').textContent = `持続: ${h > 0 ? h + '時間' : ''}${m > 0 ? m + '分' : ''}`;
+
+            const lvl = record.level || 3;
+            const lvlInfo = LEVEL_CONFIG[lvl];
+            const badge = document.getElementById('detail-level-badge');
+            badge.style.backgroundColor = lvlInfo.hex;
+            badge.style.color = lvlInfo.textColor;
+            badge.textContent = `強さ ${lvl}: ${lvlInfo.label}`;
+
+            const tagsContainer = document.getElementById('detail-tags');
+            tagsContainer.innerHTML = '';
+            if (record.symptoms && record.symptoms.length > 0) {
+                record.symptoms.forEach(s => {
+                    const tag = document.createElement('span');
+                    tag.className = 'text-xs bg-app-bg text-app-accentLight border border-app-border px-2.5 py-1 rounded-full';
+                    tag.textContent = s;
+                    tagsContainer.appendChild(tag);
+                });
+            }
+
+            modalView.classList.remove('hidden-view');
+            requestAnimationFrame(() => {
+                modalView.classList.remove('opacity-0');
+                modalViewContent.classList.remove('scale-95');
+            });
+        }
+
+        function closeViewModal() {
+            modalView.classList.add('opacity-0');
+            modalViewContent.classList.add('scale-95');
+            setTimeout(() => modalView.classList.add('hidden-view'), 250);
+        }
+
+        document.getElementById('btn-close-view').onclick = closeViewModal;
+        
+        document.getElementById('btn-edit').onclick = () => {
+            const record = AppState.records.find(r => r.id === AppState.currentRecordId);
+            closeViewModal();
+            if (record) openAddModal(record);
+        };
+
+        document.getElementById('btn-delete').onclick = () => {
+            AppState.records = AppState.records.filter(r => r.id !== AppState.currentRecordId);
+            saveData();
+            renderTimelineBlocks();
+            renderCalendar();
+            closeViewModal();
+        };
+
+        modalAdd.addEventListener('mousedown', (e) => {
+            if (e.target === modalAdd) closeAddModal();
+        });
+        modalView.addEventListener('mousedown', (e) => {
+            if (e.target === modalView) closeViewModal();
+        });
+
+        function init() {
+            loadData();
+            buildTimeLabels();
+            renderCalendar();
+            switchView('calendar');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
